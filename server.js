@@ -23,6 +23,10 @@ const db = mysql.createConnection(
 );
 // replace the values of user and password with your MySQL username and password.
 
+// make SQL query to database. Returns rows matching query
+db.query(`SELECT * FROM candidates`, (err, rows) => {
+    console.log(rows);
+})
 
 // Default response for any other request (NOT FOUND) 
     // Make sure this is the last route
