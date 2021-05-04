@@ -23,18 +23,44 @@ const db = mysql.createConnection(
 );
 // replace the values of user and password with your MySQL username and password.
 
-// make SQL query to database. Returns rows matching query
-// db.query(`SELECT * FROM candidates`, (err, rows) => {
-//     console.log(rows);
-// })
+const inputCheck = require('./utils/inputCheck');
 
-// GET a single candidate 
-// db.query(`Select * FROM candidates WHERE id = 1`, (err, row) => {
-//     if (err) {
-//         console.log(err);
-//     }
-//     console.log(row);
-// })
+// Get all candidates 
+app.get('/api/candidates', (req, res) => {
+    const sql = `SELECT * FROM candidates`;
+
+    db.query(sql, (err, rows) => {
+        if(err) {
+            res.status(500).json({ error: err.message });
+            return; 
+        }
+        res.json({
+            message: 'success',
+            data: rows
+        });
+    });
+});
+
+// GET a single candidate
+// ParamsNote: can change params :id into anythin. Ex: age.
+    // Format: /api/candidates/7 
+app.get('/api/candidate/:id', (req, res) => {
+    const sql = `SELECT * FROM candidates WHERE id = ?`;
+    const params = [req.params.id];
+
+    db.query(sql, params, (err, row) => {
+        if(err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        res.json({
+            message: 'success',
+            data: row
+        })
+    })
+})
+// Because params can be accepted in the database call as an array, 
+// params is assigned as an array with a single element, req.params.id.
 
 // Delete a candidate 
     // ? placeholder makes this a `prepared statement` 
@@ -46,6 +72,30 @@ const db = mysql.createConnection(
 //     }
 //     console.log(result)
 // })
+
+// Delete a candidate 
+app.delete('/api/candidate/:id', (req, res) => {
+    const sql = `DELETE FROM candidates WHERE id = ?`;
+    const params = [req.params.id];
+
+    db.query(sql, params, (err, result) => {
+        if(err) {
+            // ?? why is error message different from ones above?
+            res.statusMessage(400).json({ error: res.message });
+        } else if (!result.affectedRows) {
+            res.json({
+                message: 'Candidate not found'
+            });
+        } else {
+            res.json({
+                message: 'deleted',
+                // number of rows affected
+                changes: result.affectedRows,
+                id: req.params.id
+            });
+        }
+    });
+});
 
 // Create a candidate
     // Not setting id will create new id automatically 
@@ -59,6 +109,37 @@ const db = mysql.createConnection(
 //     }
 //     console.log(result);
 // });
+
+// Create a candidate 
+app.post('/api/candidate', ({ body }, res) => {
+    // !!! REVIEW this inputCheck function
+    const errors = inputCheck(body, 'first_name', 'last_name', 'industry_connected')
+
+    if (errors) {
+        res.status(400).json({ error: errors });
+        return;
+    }
+
+    // id is auto-generated here
+    const sql = `INSERT INTO candidates (first_name, last_name, industry_connected)
+                VALUES (?,?,?)`;
+    const params = [body.first_name, body.last_name, body.industry_connected];
+
+    db.query(sql, params, (err, result) => {
+        if(err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        res.json({
+            message: 'success',
+            data: body
+        })
+    })
+})
+// Review: Notice that we're using object destructuring to pull the 
+    // body property out of the request object. (req.body)  
+// This inputCheck module was provided by a helpful U Develop It member. We'll use this module to verify that user info in the request can create a candidate.
+    // import inputCheck first near top of server
 
 // Default response for any other request (NOT FOUND) 
     // Make sure this is the last route
